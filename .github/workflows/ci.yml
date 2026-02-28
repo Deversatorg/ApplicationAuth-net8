@@ -1,0 +1,30 @@
+name: .NET CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore ApplicationAuth/ApplicationAuth.csproj
+
+      - name: Build
+        run: dotnet build ApplicationAuth/ApplicationAuth.csproj --no-restore -c Release
+
+    # Currently tests are omitted as this project doesn't have an xUnit/NUnit test suite yet,
+    # but the build step ensures compilation correctness.
+    # - name: Test
+    #   run: dotnet test ApplicationAuth/ApplicationAuth.csproj --no-build --verbosity normal -c Release

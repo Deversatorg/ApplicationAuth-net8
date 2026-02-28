@@ -1,0 +1,36 @@
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Cookies Info</title>
+    <style>
+    </style>
+</head>
+<body>
+    <h2>Page has been created for testing access to cookies by JavaScript</h2>
+    <p>
+        undefined after pressing the button means that JavaScript application cannot use Cookies
+        </p>
+    <div>
+        <div>
+
+            <form>
+                <input type="button" onclick="getCookies()" value="Intercept Cookies">
+            </form>
+
+
+        </div>
+    </div>
+    <script>
+
+        function getCookies() {
+            var allCookies = document.cookie.count;
+            alert(allCookies);
+        }
+    </script>
+</body>
+</html>

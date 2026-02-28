@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title></title>
+
+    <style>
+        .colored-background {
+            background-color: #e4e4e49c;
+        }
+
+        .header h1 {
+            text-align: center;
+        }
+
+        .centered-text {
+            text-align: center;
+        }
+
+        * {
+            line-height: inherit;
+            margin: 0;
+        }
+
+        .wrapper {
+            display: block;
+            margin-top: 40px;
+        }
+
+        .main-card {
+            margin: auto;
+            padding: 15px;
+            display: block;
+            width: 400px;
+            height: 600px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            margin-top: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .footer {
+            display: block;
+            padding: 15px;
+            background-color: #bdb4b4;
+            text-align: center;
+        }
+
+        @media (max-width: 660px) {
+
+            .header,
+            .footer {
+                width: 320px;
+                margin: auto;
+            }
+        }
+    </style>
+
+    <style></style>
+</head>
+
+<body class="colored-background">
+    <div class="wrapper">
+        <div class="header">
+            <h1 class="text-center">LOGO</h1>
+        </div>
+        <div class="main-card">
+            [%CONTENT%]
+        </div>
+        <div class="footer">
+            <h3>Company name</h3>
+            <p>Comapany address</p>
+        </div>
+    </div>
+</body>
+
+</html>

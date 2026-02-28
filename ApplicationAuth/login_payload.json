@@ -1,0 +1,5 @@
+{
+    "email": "user3@test.com",
+    "password": "Welcome1!",
+    "accessTokenLifetime": 60
+}
