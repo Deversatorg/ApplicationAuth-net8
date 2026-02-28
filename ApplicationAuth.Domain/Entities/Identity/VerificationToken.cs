@@ -46,7 +46,7 @@ namespace ApplicationAuth.Domain.Entities.Identity
         {
             get
             {
-                return (DateTime.UtcNow - CreateDate).TotalMinutes < 5;
+                return (DateTime.UtcNow - CreateDate).TotalMinutes < 15;
             }
         }
 

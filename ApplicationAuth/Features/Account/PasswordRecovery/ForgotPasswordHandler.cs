@@ -5,6 +5,7 @@ using ApplicationAuth.Features.Account.Shared;
 using ApplicationAuth.SharedModels.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,12 +17,14 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordRequest, bool
     private readonly IDataContext _dataContext;
     private readonly IHashUtility _hashUtility;
     private readonly IEmailService _emailService;
+    private readonly ILogger<ForgotPasswordHandler> _logger;
 
-    public ForgotPasswordHandler(IDataContext dataContext, IHashUtility hashUtility, IEmailService emailService)
+    public ForgotPasswordHandler(IDataContext dataContext, IHashUtility hashUtility, IEmailService emailService, ILogger<ForgotPasswordHandler> logger)
     {
         _dataContext = dataContext;
         _hashUtility = hashUtility;
         _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<bool> Handle(ForgotPasswordRequest request, CancellationToken cancellationToken)
@@ -48,9 +51,18 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordRequest, bool
             await _dataContext.SaveChangesAsync(cancellationToken);
 
             var mailSubject = "ApplicationAuth - Reset Password Code";
-            var mailMessage = $"Your password reset code is: {code} \r\nIf you did not request a password reset, please ignore this email. This code will expire in 5 minutes.";
+            var mailMessage = $"Your password reset code is: {code} \r\nThis code expires in 15 minutes.";
             
-            await _emailService.SendEmailAsync(user.Email, mailSubject, mailMessage);
+            try
+            {
+                await _emailService.SendEmailAsync(user.Email, mailSubject, mailMessage);
+                _logger.LogInformation("Password reset code sent to {Email}", user.Email);
+            }
+            catch (Exception ex)
+            {
+                // SMTP not configured — print code to console for development use
+                _logger.LogWarning(ex, "[DEV MODE] SMTP failed. Password reset code for {Email} is: {Code}", user.Email, code);
+            }
         }
 
         // Return true regardless of user existence to prevent email enumeration
