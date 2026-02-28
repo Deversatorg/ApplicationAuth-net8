@@ -1,4 +1,6 @@
 using ApplicationAuth.Common.Utilities.Interfaces;
+using System;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ApplicationAuth.Common.Utilities
@@ -8,12 +10,11 @@ namespace ApplicationAuth.Common.Utilities
         public string GetHash(string inputString)
         {
             if (string.IsNullOrEmpty(inputString))
-                return "";
+                return string.Empty;
 
-            byte[] data = Encoding.ASCII.GetBytes(inputString);
-            data = new System.Security.Cryptography.SHA256Managed().ComputeHash(data);
-            string hash = Encoding.ASCII.GetString(data);
-            return hash;
+            var bytes = Encoding.UTF8.GetBytes(inputString);
+            var hash = SHA256.HashData(bytes);      // Modern, allocation-free SHA256
+            return Convert.ToBase64String(hash);    // Lossless binary-to-string
         }
     }
 }

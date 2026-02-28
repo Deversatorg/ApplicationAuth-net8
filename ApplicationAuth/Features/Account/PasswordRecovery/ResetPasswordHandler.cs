@@ -29,11 +29,10 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordRequest, bool>
 
     public async Task<bool> Handle(ResetPasswordRequest request, CancellationToken cancellationToken)
     {
-        var user = await _dataContext.Set<ApplicationUser>()
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && !u.IsDeleted, cancellationToken);
+        // Load user via UserManager to avoid EF tracking conflicts when calling ResetPasswordAsync later
+        var user = await _userManager.FindByEmailAsync(request.Email);
 
-        // Obfuscate strict user presence checks
-        if (user == null)
+        if (user == null || user.IsDeleted)
             throw new CustomException(HttpStatusCode.BadRequest, "email", "Invalid email or verification code");
 
         var activeTokens = await _dataContext.Set<VerificationToken>()
