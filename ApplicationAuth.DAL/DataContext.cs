@@ -20,6 +20,8 @@ namespace ApplicationAuth.DAL
         public virtual DbSet<UserDevice> UserDevices { get; set; }
         public virtual DbSet<ApplicationUserRole> AspNetUserRoles { get; set; }
         public virtual DbSet<UserChangeRequest> UserChangeRequests { get; set; }
+        public virtual DbSet<Plan> Plans { get; set; }
+        public virtual DbSet<Subscription> Subscriptions { get; set; }
 
         public virtual DbSet<TelegramMessage> TelegramMessages { get; set; }
         public virtual DbSet<TelegramSticker> TelegramStickers { get; set; }

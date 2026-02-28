@@ -23,6 +23,10 @@ using ApplicationAuth.Features.AdminUsers.Delete;
 using ApplicationAuth.Features.Admins;
 using ApplicationAuth.Features.Telegram;
 using ApplicationAuth.Features.Test;
+using ApplicationAuth.Features.Payments.Plans;
+using ApplicationAuth.Features.Payments.Checkout;
+using ApplicationAuth.Features.Payments.Subscription;
+using ApplicationAuth.Features.Payments.Webhook;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -126,6 +130,20 @@ builder.Services.AddMediatR(cfg => {
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddScoped<ITelegramService, TelegramHandler>();
 builder.Services.AddSingleton<ITelegramCoreService, TelegramCoreService>();
+
+// Stripe Payments
+var stripeKey = configuration["Stripe:SecretKey"];
+if (!string.IsNullOrEmpty(stripeKey))
+{
+    builder.Services.AddScoped<ApplicationAuth.Features.Payments.Shared.IStripeService,
+                               ApplicationAuth.Features.Payments.Shared.StripeService>();
+}
+else
+{
+    builder.Services.AddScoped<ApplicationAuth.Features.Payments.Shared.IStripeService,
+                               ApplicationAuth.Features.Payments.Shared.MockStripeService>();
+}
+builder.Services.AddScoped<ApplicationAuth.Features.Payments.Webhook.StripeWebhookHandler>();
 
 // Detection
 builder.Services.AddDetection();
@@ -391,6 +409,12 @@ app.MapGetAllAdminsEndpoints();
 app.MapTelegramEndpoints();
 app.MapTestEndpoints();
 
+// Payment Endpoints (Stripe)
+app.MapGetPlansEndpoint();
+app.MapCreateCheckoutSessionEndpoint();
+app.MapSubscriptionEndpoints();
+app.MapStripeWebhookEndpoint();
+
 // Health Check Endpoint
 app.MapHealthChecks("/health");
 
@@ -428,6 +452,35 @@ using (var scope = app.Services.CreateScope())
             };
             userManager.CreateAsync(adminUser, "Welcome1!").GetAwaiter().GetResult();
             userManager.AddToRoleAsync(adminUser, Role.SuperAdmin).GetAwaiter().GetResult();
+        }
+
+        // Seed default subscription plans if not present
+        if (!context.Set<ApplicationAuth.Domain.Entities.Identity.Plan>().Any())
+        {
+            context.Set<ApplicationAuth.Domain.Entities.Identity.Plan>().AddRange(
+                new ApplicationAuth.Domain.Entities.Identity.Plan
+                {
+                    Name = "Basic",
+                    Description = "Essential features for individuals",
+                    StripePriceId = "",  // Fill with real Stripe Price ID
+                    AmountCents = 999,
+                    Currency = "usd",
+                    Interval = ApplicationAuth.SharedModels.Enums.PlanInterval.Monthly,
+                    IsActive = true
+                },
+                new ApplicationAuth.Domain.Entities.Identity.Plan
+                {
+                    Name = "Pro",
+                    Description = "Advanced features for power users — best value",
+                    StripePriceId = "",  // Fill with real Stripe Price ID
+                    AmountCents = 7999,
+                    Currency = "usd",
+                    Interval = ApplicationAuth.SharedModels.Enums.PlanInterval.Yearly,
+                    IsActive = true
+                }
+            );
+            context.SaveChanges();
+            dbInitLogger.LogInformation("Seeded default subscription plans");
         }
     }
     catch (Exception ex)

@@ -58,6 +58,9 @@ namespace ApplicationAuth.Domain.Entities.Identity
         [InverseProperty("User")]
         public virtual ICollection<UserChangeRequest> UserChangeRequests { get; set; }
 
+        [InverseProperty("User")]
+        public virtual ICollection<Subscription> Subscriptions { get; set; }
+
         #endregion
 
         #region Additional Properties
@@ -82,6 +85,7 @@ namespace ApplicationAuth.Domain.Entities.Identity
             Devices = Devices.Empty();
             VerificationTokens = VerificationTokens.Empty();
             UserChangeRequests = UserChangeRequests.Empty();
+            Subscriptions = Subscriptions.Empty();
         }
 
         #endregion
