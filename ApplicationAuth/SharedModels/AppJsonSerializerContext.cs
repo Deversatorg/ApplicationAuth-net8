@@ -30,7 +30,7 @@ namespace ApplicationAuth.SharedModels;
 [JsonSerializable(typeof(TelegramMessageResponse))]
 [JsonSerializable(typeof(TelegramStickerResponseModel))]
 [JsonSerializable(typeof(TelegramMessageResponseModel))]
-[JsonSerializable(typeof(ErrorResponseModel))]
+[JsonSerializable(typeof(Microsoft.AspNetCore.Mvc.ProblemDetails))]
 [JsonSerializable(typeof(ShortAuthorizationRequestModel))]
 
 // Envelopes

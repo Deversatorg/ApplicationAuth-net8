@@ -41,7 +41,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -74,6 +73,16 @@ try
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .WriteTo.Console(new CompactJsonFormatter()));
+
+    // --- Problem Details (RFC 7807) ---
+    builder.Services.AddProblemDetails(options =>
+    {
+        options.CustomizeProblemDetails = ctx =>
+        {
+            ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
+            ctx.ProblemDetails.Extensions.TryAdd("requestId", ctx.HttpContext.TraceIdentifier);
+        };
+    });
 
 // --- Database ---
 builder.Services.AddSingleton<ApplicationAuth.DAL.Interceptors.AuditableEntityInterceptor>();
@@ -297,45 +306,67 @@ app.UseRouting();
 
 app.UseSerilogRequestLogging();
 
-// Custom Global Exception Handler
+// Global Exception Handler → RFC 7807 Problem Details
 app.UseExceptionHandler(appBuilder =>
 {
     appBuilder.Run(async context =>
     {
-        var localizer = context.RequestServices.GetService<IStringLocalizer<ErrorsResource>>();
-        var errorModel = new ErrorResponseModel(localizer);
-        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
-        
-        var exception = exceptionHandlerPathFeature?.Error;
+        var exFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = exFeature?.Error;
+        if (exception is null) return;
+
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        
-        if (exception is CustomException ex)
+        var problemDetails = context.RequestServices.GetRequiredService<IProblemDetailsService>();
+
+        if (exception is CustomException customEx)
         {
-            logger.LogWarning(ex, "CustomException thrown: {Message}", ex.Message);
-            var resultObject = errorModel.Error(ex);
-            context.Response.StatusCode = (int)(resultObject.StatusCode ?? 500);
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync(resultObject.Content);
-        }
-        else if (exception is FluentValidation.ValidationException validationException)
-        {
-            logger.LogWarning(validationException, "ValidationException thrown");
-            foreach (var error in validationException.Errors)
+            logger.LogWarning(customEx, "Business rule violation: {Key} - {Message}", customEx.Key, customEx.Message);
+            context.Response.StatusCode = (int)customEx.Code;
+            await problemDetails.WriteAsync(new ProblemDetailsContext
             {
-                var propName = string.IsNullOrEmpty(error.PropertyName) ? "request" : error.PropertyName.ToLower();
-                errorModel.AddError(propName, error.ErrorMessage);
-            }
-            var resultObject = errorModel.BadRequest();
-            context.Response.StatusCode = (int)(resultObject.StatusCode ?? 400);
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync(resultObject.Content);
+                HttpContext = context,
+                ProblemDetails =
+                {
+                    Status = (int)customEx.Code,
+                    Title = customEx.Code.ToString(),
+                    Detail = customEx.Message,
+                    Extensions = { ["errors"] = new Dictionary<string, string> { [customEx.Key] = customEx.Message } }
+                }
+            });
         }
-        else if (exception != null)
+        else if (exception is FluentValidation.ValidationException validationEx)
         {
-            logger.LogError(exception, "Unhandled exception in middleware pipeline!");
-            context.Response.StatusCode = 500;
-            context.Response.ContentType = "text/plain";
-            await context.Response.WriteAsync($"FATAL CRASH:\n{exception.ToString()}");
+            logger.LogWarning(validationEx, "Validation failure");
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            var errors = validationEx.Errors
+                .GroupBy(e => string.IsNullOrEmpty(e.PropertyName) ? "request" : e.PropertyName.ToLower())
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            await problemDetails.WriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = context,
+                ProblemDetails =
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Validation Error",
+                    Detail = "One or more validation errors occurred.",
+                    Extensions = { ["errors"] = errors }
+                }
+            });
+        }
+        else
+        {
+            logger.LogError(exception, "Unhandled exception");
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await problemDetails.WriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = context,
+                ProblemDetails =
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "Internal Server Error",
+                    Detail = "An unexpected error occurred. Please try again later."
+                }
+            });
         }
     });
 });

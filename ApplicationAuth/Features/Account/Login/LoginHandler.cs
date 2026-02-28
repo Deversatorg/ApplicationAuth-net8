@@ -36,7 +36,8 @@ public class LoginHandler : IRequestHandler<LoginRequest, LoginResponse>
             .Include(x => x.Profile)
             .FirstOrDefault();
 
-        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password) || !user.UserRoles.Any(x => x.Role.Name == Role.User))
+        var validRoles = new[] { Role.User, Role.Admin, Role.SuperAdmin };
+        if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password) || !user.UserRoles.Any(x => validRoles.Contains(x.Role.Name)))
             throw new CustomException(HttpStatusCode.BadRequest, "credentials", "Invalid credentials");
 
         if (!string.IsNullOrEmpty(request.Email) && !user.EmailConfirmed)
