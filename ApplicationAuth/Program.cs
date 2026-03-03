@@ -93,7 +93,7 @@ builder.Services.AddSingleton<ApplicationAuth.DAL.Interceptors.AuditableEntityIn
 builder.Services.AddDbContext<DataContext>((sp, options) =>
 {
     var interceptor = sp.GetRequiredService<ApplicationAuth.DAL.Interceptors.AuditableEntityInterceptor>();
-    options.UseSqlite(configuration.GetConnectionString("Connection"))
+    options.UseNpgsql(configuration.GetConnectionString("Connection"))
            .AddInterceptors(interceptor);
     options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
 });
@@ -259,7 +259,18 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddMemoryCache();
-builder.Services.AddCors();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevCors", policy =>
+    {
+        // SetIsOriginAllowed(_ => true) is required when using AllowCredentials()
+        // without hardcoding specific origins. This covers dynamic Aspire ports.
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -313,11 +324,7 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "V1");
 });
 
-app.UseCors(builder =>
-{
-    // Minimal CORS policy for simplicity. Update for prod as needed.
-    builder.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
-});
+app.UseCors("DevCors");
 
 app.UseStaticFiles();
 app.UseRouting();
